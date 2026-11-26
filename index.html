@@ -85,7 +85,6 @@
       return dt.toISOString().split("T")[0];
     };
 
-    // Diferencia en días: (fechaDestino - fechaOrigen) en UTC
     const diffDias = (isoOrigen, isoDestino) => {
       if (!isoOrigen || !isoDestino) return 0;
       const [y1, m1, d1] = isoOrigen.split("-").map(Number);
@@ -133,19 +132,23 @@
     ];
 
     // --- ARRANQUE REAL DE GRANJA ALABASTRO ---
+    // - 4 animales para sacrificio esta semana (3 machos, 1 hembra): marcados como S/I (sin numerar).
+    // - 7 madres en desarrollo: numeradas del 2 al 8 (Madre 2 a Madre 8 / M-002 a M-008).
+    // - Numeración correlativa con arete (#1 en adelante): inicia solo con los lechones que nazcan en la granja.
     const generarArranqueReal = (configActual = CONFIG_DEFAULT) => {
       const fechaCamadaPrevia = "2026-05-25";
       const cerdosSacrificioSemana = [
-        { id: 1, arete: "1", madre_id: "M-001", sexo: "M", fecha_nacimiento: fechaCamadaPrevia, corral: "E-1", estado: "engorde", peso_kg: 106, prioridad_sacrificio_semana: true, en_retiro_hasta: "" },
-        { id: 2, arete: "2", madre_id: "M-001", sexo: "M", fecha_nacimiento: fechaCamadaPrevia, corral: "E-1", estado: "engorde", peso_kg: 104, prioridad_sacrificio_semana: true, en_retiro_hasta: "" },
-        { id: 3, arete: "3", madre_id: "M-001", sexo: "M", fecha_nacimiento: fechaCamadaPrevia, corral: "E-1", estado: "engorde", peso_kg: 105, prioridad_sacrificio_semana: true, en_retiro_hasta: "" },
-        { id: 4, arete: "4", madre_id: "M-001", sexo: "H", fecha_nacimiento: fechaCamadaPrevia, corral: "E-1", estado: "engorde", peso_kg: 102, prioridad_sacrificio_semana: true, en_retiro_hasta: "" }
+        { id: "SI-SAC-M1", etiqueta_visual: "Macho · S/I", arete: "", madre_id: "Madre 1", sexo: "M", fecha_nacimiento: fechaCamadaPrevia, corral: "E-1", estado: "engorde", peso_kg: 106, prioridad_sacrificio_semana: true, en_retiro_hasta: "" },
+        { id: "SI-SAC-M2", etiqueta_visual: "Macho · S/I", arete: "", madre_id: "Madre 1", sexo: "M", fecha_nacimiento: fechaCamadaPrevia, corral: "E-1", estado: "engorde", peso_kg: 104, prioridad_sacrificio_semana: true, en_retiro_hasta: "" },
+        { id: "SI-SAC-M3", etiqueta_visual: "Macho · S/I", arete: "", madre_id: "Madre 1", sexo: "M", fecha_nacimiento: fechaCamadaPrevia, corral: "E-1", estado: "engorde", peso_kg: 105, prioridad_sacrificio_semana: true, en_retiro_hasta: "" },
+        { id: "SI-SAC-H1", etiqueta_visual: "Hembra · S/I", arete: "", madre_id: "Madre 1", sexo: "H", fecha_nacimiento: fechaCamadaPrevia, corral: "E-1", estado: "engorde", peso_kg: 102, prioridad_sacrificio_semana: true, en_retiro_hasta: "" }
       ];
 
       const hembrasReemplazo = Array.from({ length: 7 }, (_, i) => ({
-        id: 5 + i,
-        arete: String(5 + i),
-        madre_id: "M-001",
+        id: `SI-REEMP-H${i + 1}`,
+        etiqueta_visual: `Hembra Reemplazo · S/I`,
+        arete: "",
+        madre_id: "Madre 1",
         sexo: "H",
         fecha_nacimiento: fechaCamadaPrevia,
         corral: "E-2",
@@ -164,12 +167,14 @@
           jaula: "V-1",
           estado: "Activo",
           servicios_realizados: 1,
-          notas: "Detección diaria de celo en madres en desarrollo (M-002 a M-008)."
+          notas: "Detección diaria de celo en Madres 2 a 8."
         },
         madres: [
           {
             id: "M-001",
-            arete: "A-001",
+            numero_madre: 1,
+            nombre_corto: "Madre 1",
+            arete: "1",
             raza: "Landrace x Large White",
             jaula: "G-1",
             estado: "gestante",
@@ -182,37 +187,40 @@
             partos: 3,
             nacidos_vivos_total: 12,
             repeticiones: 0,
-            notas_origen: "Comprada preñada. 3er parto el 25-05-2026 (12 lechones: 8H, 4M; 1 macho murió a los 3m -> 11 vivos: 7H reproductoras + 4 ceba). Aún no desparasitada para día 100."
+            notas_origen: "Comprada preñada. 3er parto el 25-05-2026 (12 lechones: 8H, 4M; 1 macho murió a los 3m -> 11 vivos: 7H reproductoras + 4 S/I para sacrificio). Aún no desparasitada para día 100."
           },
           ...Array.from({ length: 7 }, (_, idx) => {
-            const num = idx + 2;
+            const num = idx + 2; // Madres 2 a 8
             return {
               id: `M-00${num}`,
-              arete: `A-00${num}`,
+              numero_madre: num,
+              nombre_corto: `Madre ${num}`,
+              arete: String(num),
               raza: "Landrace x Large White",
               jaula: `G-${num}`,
               estado: "desarrollo",
               partos: 0,
               nacidos_vivos_total: 0,
               repeticiones: 0,
-              notas_origen: "En desarrollo, sin primer celo aún."
+              notas_origen: `Madre ${num} en desarrollo, sin primer celo aún.`
             };
           })
         ],
         cerdos: [...cerdosSacrificioSemana, ...hembrasReemplazo],
-        siguiente_cerdo_id: 12,
+        siguiente_cerdo_id: 1,
         casos_enfermedad: [],
         bajas_sacrificios: [
           {
             fecha: "2026-08-25",
             tipo: "Baja histórica (3 meses)",
             id_animal: "HIST-M1",
-            arete: "Previo",
+            etiqueta_visual: "Macho previo · S/I",
+            arete: "",
             motivo: "Muerte a los 3 meses por descuido (de 4 machos del parto 25-05-2026 quedaron 3)"
           }
         ],
         auditoria: [
-          { fecha: new Date().toLocaleString("es-VE"), detalle: "Arranque real cargado: M-001 gestante (servicio 02-09-2026, desparasitación día 100 pendiente), M-002..M-008 en desarrollo, 4 cerdos (3M, 1H) para sacrificio esta semana y 7H reemplazo." }
+          { fecha: new Date().toLocaleString("es-VE"), detalle: "Arranque real cargado: 4 cerdos para sacrificio esta semana marcados como S/I, Madres 2 a 8 en desarrollo y Madre 1 gestante (02-09-2026)." }
         ]
       };
     };
@@ -230,6 +238,8 @@
         <circle cx="62" cy="46" r="3.5" fill="#09090b" />
       </svg>
     );
+
+    const etiquetaAnimal = (c) => c.arete ? `Arete #${c.arete}` : (c.etiqueta_visual || "S/I");
 
     function App() {
       const [dbReady, setDbReady] = useState(!!window.AlabastroDB);
@@ -312,7 +322,6 @@
         const lista = [];
 
         const agregarTarea = (t) => {
-          // diasFaltan > 0 significa que la fecha programada está en el futuro
           const diasFaltan = diffDias(hoy, t.fecha);
           let semaforo = "verde";
           let etiqueta = `Faltan ${diasFaltan}d`;
@@ -332,11 +341,12 @@
         // 1. Tareas de Madres
         (data.madres || []).forEach((m) => {
           if (m.estado === "descartada") return;
+          const etiquetaMadre = m.nombre_corto || m.id;
           if (m.estado === "gestante" && m.fecha_servicio) {
             if (m.verificacion_21d === "pendiente") {
               agregarTarea({
                 id: `verif21-${m.id}`, tipo: "madre_verif21", madreId: m.id, ubicacion: m.jaula,
-                titulo: `Verificar celo 21d · Madre ${m.id} (${m.arete})`,
+                titulo: `Verificar celo 21d · ${etiquetaMadre}`,
                 detalle: `Jaula ${m.jaula} · Confirmar si no repitió celo tras servicio del ${fmtFecha(m.fecha_servicio)}.`,
                 fecha: sumarDias(m.fecha_servicio, cfg.ciclo_celo)
               });
@@ -344,7 +354,7 @@
             if (!m.desp_100_hecha) {
               agregarTarea({
                 id: `desp100-${m.id}`, tipo: "madre_desp100", madreId: m.id, ubicacion: m.jaula,
-                titulo: `Desparasitación + Lavado (Día 100) · ${m.id} (Pendiente)`,
+                titulo: `Desparasitación + Lavado (Día 100) · ${etiquetaMadre} (Pendiente)`,
                 detalle: `Jaula ${m.jaula} · Aún no desparasitada. Programada para el día 100 de gestación.`,
                 fecha: sumarDias(m.fecha_servicio, cfg.desp_gestacion)
               });
@@ -352,14 +362,14 @@
             if (m.jaula && m.jaula.startsWith("G-")) {
               agregarTarea({
                 id: `mat-${m.id}`, tipo: "madre_maternidad", madreId: m.id, ubicacion: m.jaula,
-                titulo: `Traslado a Maternidad (Día 107) · ${m.id}`,
+                titulo: `Traslado a Maternidad (Día 107) · ${etiquetaMadre}`,
                 detalle: `Desde ${m.jaula} hacia jaula libre M-1 o M-2.`,
                 fecha: sumarDias(m.fecha_servicio, cfg.pase_maternidad)
               });
             }
             agregarTarea({
               id: `parto-${m.id}`, tipo: "madre_parto", madreId: m.id, ubicacion: m.jaula,
-              titulo: `Parto probable (Día 114) · ${m.id}`,
+              titulo: `Parto probable (Día 114) · ${etiquetaMadre}`,
               detalle: `Servicio ${fmtFecha(m.fecha_servicio)} · Jaula ${m.jaula}. Al parir: Meloxicam 2% + Modificador a las 12h.`,
               fecha: sumarDias(m.fecha_servicio, cfg.parto_probable)
             });
@@ -369,7 +379,7 @@
             if (!m.descolmillado_hecho) {
               agregarTarea({
                 id: `desc-${m.id}`, tipo: "camada_descolmillado", madreId: m.id, ubicacion: m.jaula,
-                titulo: `Día 2: Descolmillado camada · ${m.id}`,
+                titulo: `Día 2: Descolmillado camada · ${etiquetaMadre}`,
                 detalle: `Jaula ${m.jaula} · ${m.nacidos_vivos} lechones nacidos vivos.`,
                 fecha: sumarDias(m.fecha_parto, cfg.dia_descolmillado)
               });
@@ -377,15 +387,15 @@
             if (!m.cola_hierro1_hecho) {
               agregarTarea({
                 id: `hierro1-${m.id}`, tipo: "camada_hierro1", madreId: m.id, ubicacion: m.jaula,
-                titulo: `Día 3: Corte de cola + 1er Hierro + Aretes · ${m.id}`,
-                detalle: `Jaula ${m.jaula} · Asignar aretes correlativos y aplicar hierro.`,
+                titulo: `Día 3: Corte de cola + 1er Hierro + Aretes (#${data.siguiente_cerdo_id || 1} en adelante) · ${etiquetaMadre}`,
+                detalle: `Jaula ${m.jaula} · Asignar aretes correlativos a los nacidos en granja y aplicar hierro.`,
                 fecha: sumarDias(m.fecha_parto, cfg.dia_cola_hierro1)
               });
             }
             if (!m.castracion_hecho) {
               agregarTarea({
                 id: `cast-${m.id}`, tipo: "camada_castracion", madreId: m.id, ubicacion: m.jaula,
-                titulo: `Día 7: Castración de machos · ${m.id}`,
+                titulo: `Día 7: Castración de machos · ${etiquetaMadre}`,
                 detalle: `Jaula ${m.jaula} · Revisar lechones machos de la camada.`,
                 fecha: sumarDias(m.fecha_parto, cfg.dia_castracion)
               });
@@ -393,7 +403,7 @@
             if (!m.hierro2_hecho) {
               agregarTarea({
                 id: `hierro2-${m.id}`, tipo: "camada_hierro2", madreId: m.id, ubicacion: m.jaula,
-                titulo: `Día 12: 2da Dosis de Hierro · ${m.id}`,
+                titulo: `Día 12: 2da Dosis de Hierro · ${etiquetaMadre}`,
                 detalle: `Jaula ${m.jaula} · Refuerzo de hierro antes del destete.`,
                 fecha: sumarDias(m.fecha_parto, cfg.dia_hierro2)
               });
@@ -401,7 +411,7 @@
             const diasDest = m.tipo_destete === "corto" ? cfg.destete_corto : cfg.destete_largo;
             agregarTarea({
               id: `dest-${m.id}`, tipo: "madre_destete", madreId: m.id, ubicacion: m.jaula,
-              titulo: `Destete (${diasDest}d) + Vitamina B12 / Desparasitación · ${m.id}`,
+              titulo: `Destete (${diasDest}d) + Vitamina B12 / Desparasitación · ${etiquetaMadre}`,
               detalle: `Jaula ${m.jaula} · Madre: Vit B12 + Modificador + Desparasitante y pase a gestación (dejar 1er celo libre). Lechones: Vit B.`,
               fecha: sumarDias(m.fecha_parto, diasDest)
             });
@@ -410,14 +420,14 @@
           if (m.estado === "celo_libre_espera" && m.fecha_destete) {
             agregarTarea({
               id: `celo2-${m.id}`, tipo: "madre_servicio_2celo", madreId: m.id, ubicacion: m.jaula,
-              titulo: `2do Celo Post-Destete (Listo para Monta/IA) · ${m.id}`,
+              titulo: `2do Celo Post-Destete (Listo para Monta/IA) · ${etiquetaMadre}`,
               detalle: `Jaula ${m.jaula} · 1er celo libre pasado; verificar con verraco celador V-001.`,
               fecha: sumarDias(m.fecha_destete, 23)
             });
           }
         });
 
-        // 2. Cerdos marcados para sacrificio esta semana
+        // 2. Cerdos marcados para sacrificio esta semana (S/I)
         const paraSacrificio = (data.cerdos || []).filter((c) => c.estado === "engorde" && c.prioridad_sacrificio_semana);
         if (paraSacrificio.length > 0) {
           const machos = paraSacrificio.filter((x) => x.sexo === "M").length;
@@ -428,16 +438,16 @@
             corral: "E-1",
             ubicacion: "E-1",
             forzarRojo: true,
-            titulo: `Sacrificio esta semana · ${paraSacrificio.length} cerdos (${machos} machos, ${hembras} hembra)`,
-            detalle: `Aretes #${paraSacrificio.map((x) => x.arete).join(", #")} en E-1 (camada 25-05-2026). Registrar peso vivo, canal y rendimiento.`,
+            titulo: `Sacrificio esta semana · ${paraSacrificio.length} cerdos (${machos} machos, ${hembras} hembra · S/I)`,
+            detalle: `Corral E-1 (camada 25-05-2026, sin arete / S/I). Registrar peso vivo, canal y rendimiento.`,
             fecha: hoy
           });
         }
 
-        // 3. Tareas agrupadas por Corral para Cerdos activos en Pre-ceba y Engorde
-        const activos = (data.cerdos || []).filter((c) => (c.estado === "pre-ceba" || c.estado === "engorde") && !c.prioridad_sacrificio_semana);
+        // 3. Tareas agrupadas por Corral para Cerdos nacidos en granja (con arete)
+        const conAreteActivos = (data.cerdos || []).filter((c) => c.arete && (c.estado === "pre-ceba" || c.estado === "engorde") && !c.prioridad_sacrificio_semana);
         const porCorral = {};
-        activos.forEach((c) => {
+        conAreteActivos.forEach((c) => {
           if (!porCorral[c.corral]) porCorral[c.corral] = [];
           porCorral[c.corral].push(c);
         });
@@ -531,7 +541,7 @@
             m.jaula = libre.id;
           }
           if (t.tipo === "madre_parto") {
-            const vivos = Number(prompt(`Parto de ${m.id}: ¿Cuántos lechones nacieron VIVOS?`, "11") || 0);
+            const vivos = Number(prompt(`Parto de ${m.nombre_corto || m.id}: ¿Cuántos lechones nacieron VIVOS?`, "11") || 0);
             const muertos = Number(prompt(`¿Cuántos nacieron MUERTOS?`, "0") || 0);
             const tipoDest = confirm("¿Será destete LARGO de 30 días? (Aceptar = 30 días / Cancelar = Corto 21 días)") ? "largo" : "corto";
             m.estado = "lactante";
@@ -553,9 +563,10 @@
             let seq = nuevo.siguiente_cerdo_id || 1;
             for (let k = 0; k < cant; k++) {
               nuevo.cerdos.push({
-                id: seq,
+                id: `NAC-${seq}`,
                 arete: String(seq),
-                madre_id: m.id,
+                etiqueta_visual: `Arete #${seq}`,
+                madre_id: m.nombre_corto || m.id,
                 sexo: k % 2 === 0 ? "M" : "H",
                 fecha_nacimiento: m.fecha_parto || hoy,
                 fecha_destete: "",
@@ -574,7 +585,7 @@
             const corralPre = nuevo.jaulas.find((j) => j.area === "Pre-ceba" && j.estado === "activa")?.id || "PC-1";
             const jaulaGest = nuevo.jaulas.find((j) => j.area === "Gestación" && j.estado === "activa" && !nuevo.madres.some((md) => md.jaula === j.id && md.estado !== "descartada"))?.id || "G-1";
             nuevo.cerdos.forEach((c) => {
-              if (c.madre_id === m.id && c.estado === "lactante") {
+              if (c.madre_id === (m.nombre_corto || m.id) && c.estado === "lactante") {
                 c.estado = "pre-ceba";
                 c.corral = corralPre;
                 c.fecha_destete = hoy;
@@ -621,12 +632,13 @@
         const nuevo = JSON.parse(JSON.stringify(data));
         const m = nuevo.madres.find((x) => x.id === madreId);
         if (!m) return;
+        const etiquetaMadre = m.nombre_corto || m.id;
 
         if (accion === "celo_pasado") {
           m.estado = "vacia";
           m.fecha_celo = hoy;
           m.proximo_celo_esperado = sumarDias(hoy, nuevo.config.ciclo_celo);
-          guardarEstado(nuevo, `Madre ${m.id}: Primer celo / celo registrado (próximo en 21d: ${fmtFecha(m.proximo_celo_esperado)}).`);
+          guardarEstado(nuevo, `${etiquetaMadre}: Primer celo / celo registrado (próximo en 21d: ${fmtFecha(m.proximo_celo_esperado)}).`);
         } else if (accion === "monta" || accion === "ia") {
           m.estado = "gestante";
           m.fecha_celo = hoy;
@@ -637,28 +649,28 @@
           if (accion === "monta" && nuevo.verraco) {
             nuevo.verraco.servicios_realizados = (nuevo.verraco.servicios_realizados || 0) + 1;
           }
-          guardarEstado(nuevo, `Madre ${m.id}: ${m.tipo_servicio} registrada el ${fmtFecha(hoy)}.`);
+          guardarEstado(nuevo, `${etiquetaMadre}: ${m.tipo_servicio} registrada el ${fmtFecha(hoy)}.`);
         } else if (accion === "repite_celo") {
           m.estado = "vacia";
           m.repeticiones = (m.repeticiones || 0) + 1;
           m.fecha_celo = hoy;
           m.fecha_servicio = "";
-          guardarEstado(nuevo, `Madre ${m.id}: Repitió celo a los 21 días; ciclo reiniciado.`);
+          guardarEstado(nuevo, `${etiquetaMadre}: Repitió celo a los 21 días; ciclo reiniciado.`);
         } else if (accion === "meloxicam_parto") {
           m.meloxicam_parto_hecho = true;
-          guardarEstado(nuevo, `Madre ${m.id}: Meloxicam 2% + Modificador orgánico (12h posparto) aplicados.`);
+          guardarEstado(nuevo, `${etiquetaMadre}: Meloxicam 2% + Modificador orgánico (12h posparto) aplicados.`);
         } else if (accion === "descartar") {
-          const motivo = prompt(`Motivo de descarte para ${m.id} (Reproductivo / Sanitario / Edad):`, "Reproductivo");
+          const motivo = prompt(`Motivo de descarte para ${etiquetaMadre} (Reproductivo / Sanitario / Edad):`, "Reproductivo");
           if (!motivo) return;
           m.estado = "descartada";
           m.jaula = "";
           nuevo.bajas_sacrificios.push({
-            fecha: hoy, tipo: "Descarte Madre", id_animal: m.id, arete: m.arete, motivo
+            fecha: hoy, tipo: "Descarte Madre", id_animal: m.id, arete: m.arete, etiqueta_visual: etiquetaMadre, motivo
           });
-          guardarEstado(nuevo, `Madre ${m.id} descartada (${motivo}) y jaula liberada.`);
+          guardarEstado(nuevo, `${etiquetaMadre} descartada (${motivo}) y jaula liberada.`);
         }
         setModalMadre(null);
-        mostrarAviso(`✓ Ciclo actualizado para ${m.id}.`);
+        mostrarAviso(`✓ Ciclo actualizado para ${etiquetaMadre}.`);
       };
 
       const crearLoteManual = (e) => {
@@ -670,16 +682,19 @@
         const peso = Number(fd.get("peso") || 15);
         const sexoLote = fd.get("sexo") || "M";
         const destino = fd.get("destino") || "engorde";
+        const tieneArete = fd.get("tiene_arete") === "si";
 
         const nuevo = JSON.parse(JSON.stringify(data));
         let seq = nuevo.siguiente_cerdo_id || 1;
         const inicioArete = seq;
         for (let i = 0; i < cantidad; i++) {
+          const sx = sexoLote === "MIXTO" ? (i % 2 === 0 ? "M" : "H") : sexoLote;
           nuevo.cerdos.push({
-            id: seq,
-            arete: String(seq),
-            madre_id: "M-001",
-            sexo: sexoLote === "MIXTO" ? (i % 2 === 0 ? "M" : "H") : sexoLote,
+            id: tieneArete ? `NAC-${seq}` : `SI-${Date.now()}-${i}`,
+            arete: tieneArete ? String(seq) : "",
+            etiqueta_visual: tieneArete ? `Arete #${seq}` : `${sx === "M" ? "Macho" : "Hembra"} · S/I`,
+            madre_id: "Madre 1",
+            sexo: sx,
             fecha_nacimiento: fechaNac,
             fecha_destete: sumarDias(fechaNac, 30),
             corral,
@@ -691,10 +706,14 @@
             vitb80_hecha: false,
             desp3_hecha: false
           });
-          seq++;
+          if (tieneArete) seq++;
         }
-        nuevo.siguiente_cerdo_id = seq;
-        guardarEstado(nuevo, `Ingresados ${cantidad} cerdos en ${corral} (Aretes #${inicioArete} al #${seq - 1}).`);
+        if (tieneArete) {
+          nuevo.siguiente_cerdo_id = seq;
+          guardarEstado(nuevo, `Ingresados ${cantidad} cerdos con arete en ${corral} (#${inicioArete} al #${seq - 1}).`);
+        } else {
+          guardarEstado(nuevo, `Ingresados ${cantidad} cerdos (S/I) en ${corral}.`);
+        }
         setModalNuevoLote(false);
         mostrarAviso(`✓ ${cantidad} cerdos registrados en ${corral}.`);
       };
@@ -733,14 +752,15 @@
 
       const retirarOSacrificarCerdo = (cerdo, modo) => {
         const hoy = hoyISO();
+        const descAnimal = etiquetaAnimal(cerdo);
         if (modo === "sacrificio") {
           if (cerdo.en_retiro_hasta && hoy <= cerdo.en_retiro_hasta) {
-            mostrarAviso(`BLOQUEO SANITARIO: Arete #${cerdo.arete} en retiro hasta ${fmtFecha(cerdo.en_retiro_hasta)}.`);
+            mostrarAviso(`BLOQUEO SANITARIO: ${descAnimal} en retiro hasta ${fmtFecha(cerdo.en_retiro_hasta)}.`);
             return;
           }
-          const pesoVivo = Number(prompt(`Sacrificio Cerdo #${cerdo.arete} (${cerdo.sexo}) · Peso vivo final (kg):`, String(cerdo.peso_kg || 105)));
+          const pesoVivo = Number(prompt(`Sacrificio ${descAnimal} (${cerdo.sexo}) · Peso vivo final (kg):`, String(cerdo.peso_kg || 105)));
           if (!pesoVivo) return;
-          const pesoCanal = Number(prompt(`Peso en canal obtenido (kg) para #${cerdo.arete}:`, String((pesoVivo * 0.78).toFixed(1))));
+          const pesoCanal = Number(prompt(`Peso en canal obtenido (kg) para ${descAnimal}:`, String((pesoVivo * 0.78).toFixed(1))));
           if (!pesoCanal) return;
           const rend = ((pesoCanal / pesoVivo) * 100).toFixed(1);
           const nuevo = JSON.parse(JSON.stringify(data));
@@ -749,13 +769,13 @@
           target.prioridad_sacrificio_semana = false;
           target.corral = "";
           nuevo.bajas_sacrificios.unshift({
-            fecha: hoy, tipo: "Sacrificio", id_animal: cerdo.id, arete: cerdo.arete,
+            fecha: hoy, tipo: "Sacrificio", id_animal: cerdo.id, arete: cerdo.arete || "", etiqueta_visual: descAnimal,
             peso_vivo: pesoVivo, peso_canal: pesoCanal, rendimiento: `${rend}%`
           });
-          guardarEstado(nuevo, `Sacrificio Cerdo #${cerdo.arete}: ${pesoVivo} kg vivo / ${pesoCanal} kg canal (${rend}%).`);
-          mostrarAviso(`✓ Sacrificio registrado (#${cerdo.arete} · ${rend}%).`);
+          guardarEstado(nuevo, `Sacrificio ${descAnimal}: ${pesoVivo} kg vivo / ${pesoCanal} kg canal (${rend}%).`);
+          mostrarAviso(`✓ Sacrificio registrado (${descAnimal} · ${rend}%).`);
         } else {
-          const causa = prompt(`RETIRO / BAJA antes de sacrificio para Cerdo #${cerdo.arete} (Muerte / Descarte sanitario / Venta en pie):`, "Muerte");
+          const causa = prompt(`RETIRO / BAJA antes de sacrificio para ${descAnimal} (Muerte / Descarte sanitario / Venta en pie):`, "Muerte");
           if (!causa) return;
           const pesoBaja = Number(prompt(`Peso estimado al momento del retiro (kg):`, String(cerdo.peso_kg || 0)));
           const nuevo = JSON.parse(JSON.stringify(data));
@@ -764,34 +784,34 @@
           target.prioridad_sacrificio_semana = false;
           target.corral = "";
           nuevo.bajas_sacrificios.unshift({
-            fecha: hoy, tipo: "Retiro antes de sacrificio", id_animal: cerdo.id, arete: cerdo.arete,
+            fecha: hoy, tipo: "Retiro antes de sacrificio", id_animal: cerdo.id, arete: cerdo.arete || "", etiqueta_visual: descAnimal,
             motivo: causa, peso_vivo: pesoBaja
           });
-          guardarEstado(nuevo, `Retiro en corral Cerdo #${cerdo.arete} (${causa}, ${pesoBaja} kg). Cupo liberado.`);
-          mostrarAviso(`✓ Retiro registrado para Cerdo #${cerdo.arete}.`);
+          guardarEstado(nuevo, `Retiro en corral ${descAnimal} (${causa}, ${pesoBaja} kg). Cupo liberado.`);
+          mostrarAviso(`✓ Retiro registrado para ${descAnimal}.`);
         }
       };
 
       const registrarEnfermedad = (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
-        const arete = fd.get("arete").trim();
+        const ident = fd.get("arete").trim();
         const signos = fd.get("signos").trim();
         const trat = fd.get("tratamiento").trim();
         const diasRetiro = Number(fd.get("retiro") || 0);
         const hoy = hoyISO();
         const nuevo = JSON.parse(JSON.stringify(data));
-        const cerdo = nuevo.cerdos.find((c) => c.arete === arete && (c.estado === "pre-ceba" || c.estado === "engorde"));
+        const cerdo = nuevo.cerdos.find((c) => (c.arete && c.arete === ident) || (c.etiqueta_visual && c.etiqueta_visual.toLowerCase().includes(ident.toLowerCase())));
         if (cerdo && diasRetiro > 0) {
           cerdo.en_retiro_hasta = sumarDias(hoy, diasRetiro);
         }
         nuevo.casos_enfermedad.unshift({
-          id: Date.now(), fecha: hoy, arete, corral: cerdo ? cerdo.corral : "Maternidad/Gest.",
+          id: Date.now(), fecha: hoy, arete: cerdo ? etiquetaAnimal(cerdo) : ident, corral: cerdo ? cerdo.corral : "Maternidad/Gest.",
           signos, tratamiento: trat, dias_retiro: diasRetiro, fin_retiro: diasRetiro > 0 ? sumarDias(hoy, diasRetiro) : ""
         });
-        guardarEstado(nuevo, `Caso clínico registrado para Arete #${arete} (Retiro: ${diasRetiro} días).`);
+        guardarEstado(nuevo, `Caso clínico registrado para ${ident} (Retiro: ${diasRetiro} días).`);
         setModalEnfermedad(false);
-        mostrarAviso(`✓ Caso clínico registrado para Arete #${arete}.`);
+        mostrarAviso(`✓ Caso clínico registrado para ${ident}.`);
       };
 
       if (!data) {
@@ -847,8 +867,8 @@
               {[
                 { id: "hoy", label: `Hoy (${tareasRojas.length + tareasAmarillas.length})` },
                 { id: "corrales", label: "Corrales (Semáforos)" },
-                { id: "madres", label: "Madres (M-001..008)" },
-                { id: "cerdos", label: "Ceba / Reemplazo (1..∞)" },
+                { id: "madres", label: "Madres (1 al 8)" },
+                { id: "cerdos", label: "Ceba / Reemplazo" },
                 { id: "sanidad", label: "Sanidad & Plan" },
                 { id: "config", label: "Configuración" }
               ].map((item) => (
@@ -957,9 +977,11 @@
                             sem === "verde" ? "border-emerald-600 bg-emerald-50/50" :
                             "border-zinc-300 bg-white";
 
-                          const idsCerdos = cerdosCorral.map((c) => Number(c.arete)).sort((a, b) => a - b);
-                          const rango = idsCerdos.length > 0
-                            ? (idsCerdos.length === 1 ? `Arete #${idsCerdos[0]}` : `Aretes ${idsCerdos[0]}–${idsCerdos[idsCerdos.length - 1]}`)
+                          const conArete = cerdosCorral.filter((c) => c.arete).map((c) => Number(c.arete)).sort((a, b) => a - b);
+                          const descCerdos = cerdosCorral.length > 0
+                            ? (conArete.length > 0
+                                ? (conArete.length === 1 ? `Arete #${conArete[0]}` : `Aretes ${conArete[0]}–${conArete[conArete.length - 1]}`)
+                                : "S/I")
                             : "";
 
                           return (
@@ -976,8 +998,8 @@
                               </div>
                               <div className="mt-2 text-xs font-extrabold text-zinc-900">
                                 {u.area === "Verraco / Celador" && `${data.verraco?.id} · ${data.verraco?.raza}`}
-                                {madreOcupante && `${madreOcupante.id} (${madreOcupante.estado === "gestante" ? "Gestante" : "Desarrollo"})`}
-                                {cerdosCorral.length > 0 && `${cerdosCorral.length} cerdos · ${rango}`}
+                                {madreOcupante && `${madreOcupante.nombre_corto || madreOcupante.id} (${madreOcupante.estado === "gestante" ? "Gestante" : "Desarrollo"})`}
+                                {cerdosCorral.length > 0 && `${cerdosCorral.length} cerdos · ${descCerdos}`}
                                 {!madreOcupante && cerdosCorral.length === 0 && u.area !== "Verraco / Celador" && "Disponible"}
                               </div>
                               <div className="mt-1 text-[11px] font-bold text-zinc-600">{semTexto}</div>
@@ -991,7 +1013,7 @@
               </div>
             )}
 
-            {/* ==================== 3. MADRES REPRODUCTORAS (M-001 a M-008) ==================== */}
+            {/* ==================== 3. MADRES REPRODUCTORAS (MADRE 1 A MADRE 8) ==================== */}
             {tab === "madres" && (
               <div className="space-y-3">
                 <div className={`${cardBase} p-3 rounded-2xl flex items-center justify-between bg-zinc-950 text-white`}>
@@ -1004,18 +1026,19 @@
 
                 {(data.madres || []).map((m) => {
                   const diasGest = m.estado === "gestante" && m.fecha_servicio ? diffDias(m.fecha_servicio, hoyISO()) : null;
+                  const etiquetaMadre = m.nombre_corto || m.id;
                   return (
                     <div key={m.id} className={`${cardBase} p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3`}>
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-lg font-black">{m.id}</span>
+                          <span className="text-lg font-black">{etiquetaMadre}</span>
                           <span className="px-2 py-0.5 rounded bg-zinc-200 text-xs font-bold">Arete {m.arete}</span>
                           <span className="px-2 py-0.5 rounded bg-zinc-900 text-white text-xs font-bold">{m.jaula || "Sin jaula"}</span>
                           <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 text-xs font-extrabold uppercase">{m.estado.replace(/_/g, " ")}</span>
                         </div>
                         <p className="text-xs text-zinc-600 font-semibold">
                           {diasGest !== null && `Montada: ${fmtFecha(m.fecha_servicio)} (Día ${diasGest} de gestación) · Desparasitación día 100: ${fmtFecha(sumarDias(m.fecha_servicio, data.config.desp_gestacion))} (${m.desp_100_hecha ? "Hecha" : "Pendiente"}) · Parto probable: ${fmtFecha(sumarDias(m.fecha_servicio, data.config.parto_probable))}`}
-                          {m.estado === "desarrollo" && "En desarrollo · Aún no ha tenido su primer celo."}
+                          {m.estado === "desarrollo" && `${etiquetaMadre} en desarrollo · Aún no ha tenido su primer celo.`}
                         </p>
                         {m.notas_origen && <p className="text-[11px] text-zinc-500">{m.notas_origen}</p>}
                       </div>
@@ -1033,13 +1056,13 @@
               </div>
             )}
 
-            {/* ==================== 4. CERDOS DE CEBA / REEMPLAZO (ID 1 al ∞) ==================== */}
+            {/* ==================== 4. CERDOS DE CEBA / REEMPLAZO ==================== */}
             {tab === "cerdos" && (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
-                    placeholder="Buscar por número de arete o corral (ej. E-1, E-2)..."
+                    placeholder="Buscar por arete (en nacidos en granja), S/I o corral (ej. E-1, E-2)..."
                     value={busquedaArete}
                     onChange={(e) => setBusquedaArete(e.target.value)}
                     className="flex-1 p-3.5 rounded-xl border-2 border-zinc-300 bg-white font-bold text-sm"
@@ -1055,7 +1078,10 @@
                 {["PC-1", "PC-2", "E-1", "E-2", "E-3", "E-4"].map((cid) => {
                   const grupo = (data.cerdos || []).filter(
                     (c) => c.corral === cid && (c.estado === "pre-ceba" || c.estado === "engorde" || c.estado === "reemplazo_reproductora") &&
-                    (!busquedaArete || c.arete.includes(busquedaArete.trim()) || cid.toLowerCase().includes(busquedaArete.trim().toLowerCase()))
+                    (!busquedaArete ||
+                      (c.arete && c.arete.includes(busquedaArete.trim())) ||
+                      (c.etiqueta_visual && c.etiqueta_visual.toLowerCase().includes(busquedaArete.trim().toLowerCase())) ||
+                      cid.toLowerCase().includes(busquedaArete.trim().toLowerCase()))
                   );
                   if (grupo.length === 0) return null;
                   const edadDias = diffDias(grupo[0].fecha_nacimiento, hoyISO());
@@ -1097,7 +1123,7 @@
                             >
                               <div>
                                 <div className="font-black text-sm">
-                                  Arete #{c.arete} <span className="text-xs font-semibold text-zinc-600">({c.sexo === "M" ? "Macho" : "Hembra"} · {c.estado === "reemplazo_reproductora" ? "Reemplazo Madre" : "Ceba"})</span>
+                                  {etiquetaAnimal(c)} <span className="text-xs font-semibold text-zinc-600">({c.sexo === "M" ? "Macho" : "Hembra"} · {c.estado === "reemplazo_reproductora" ? "Reemplazo Madre" : "Ceba"})</span>
                                 </div>
                                 <div className="text-xs text-zinc-600 font-bold">
                                   Peso: {c.peso_kg} kg {esSacrificio && <span className="text-red-700">· 🔴 SACRIFICIO ESTA SEMANA</span>}
@@ -1160,7 +1186,7 @@
                     </h3>
                     <ul className="space-y-2 text-sm">
                       <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 2 de nacido:</strong> Descolmillado.</li>
-                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 3 de nacido:</strong> Corte de cola + 1ra dosis de Hierro + colocación de aretes.</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 3 de nacido:</strong> Corte de cola + 1ra dosis de Hierro + colocación de aretes (#1 en adelante en nacidos en granja).</li>
                       <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 7 de nacido:</strong> Castración de machos.</li>
                       <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 12 de nacido:</strong> 2da dosis de Hierro.</li>
                       <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día del Destete:</strong> Vitamina B para abrir el apetito.</li>
@@ -1181,7 +1207,7 @@
                     data.bajas_sacrificios.map((b, i) => (
                       <div key={i} className="p-3 rounded-xl border bg-zinc-50 text-xs flex justify-between gap-2">
                         <div>
-                          <strong>{b.tipo}</strong> · Arete #{b.arete} ({fmtFecha(b.fecha)}) — {b.motivo || `Vivo: ${b.peso_vivo} kg / Canal: ${b.peso_canal} kg (${b.rendimiento})`}
+                          <strong>{b.tipo}</strong> · {b.etiqueta_visual || (b.arete ? `Arete #${b.arete}` : "S/I")} ({fmtFecha(b.fecha)}) — {b.motivo || `Vivo: ${b.peso_vivo} kg / Canal: ${b.peso_canal} kg (${b.rendimiento})`}
                         </div>
                       </div>
                     ))
@@ -1262,7 +1288,7 @@
                       <div>
                         <h4 className="font-black text-base">Restaurar Arranque Real de Granja Alabastro</h4>
                         <p className="text-xs text-zinc-600 mt-0.5">
-                          Vuelve al estado inicial real: M-001 gestante (02-09-2026, desparasitación día 100 pendiente), M-002..M-008 en desarrollo, 4 cerdos (3M, 1H) para sacrificio esta semana en E-1 y 7 hembras de reemplazo.
+                          4 cerdos para sacrificio esta semana marcados como S/I, Madres 2 a 8 en desarrollo y Madre 1 gestante (02-09-2026).
                         </p>
                       </div>
 
@@ -1327,7 +1353,7 @@
             <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4">
               <div className="bg-white w-full max-w-md rounded-2xl p-5 space-y-3">
                 <div className="flex justify-between items-center border-b pb-2">
-                  <h3 className="font-black text-lg">{modalMadre.id} · Arete {modalMadre.arete}</h3>
+                  <h3 className="font-black text-lg">{modalMadre.nombre_corto || modalMadre.id} · Arete {modalMadre.arete}</h3>
                   <button onClick={() => setModalMadre(null)} className="text-sm font-black px-2 py-1">✕</button>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
@@ -1354,14 +1380,21 @@
             </div>
           )}
 
-          {/* MODAL INGRESAR LOTE MANUAL EN CEBA */}
+          {/* MODAL INGRESAR LOTE MANUAL */}
           {modalNuevoLote && (
             <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
               <form onSubmit={crearLoteManual} className="bg-white w-full max-w-md rounded-2xl p-5 space-y-3">
                 <div className="flex justify-between items-center border-b pb-2">
-                  <h3 className="font-black text-base">Ingresar Lote (ID #{data.siguiente_cerdo_id || 1} en adelante)</h3>
+                  <h3 className="font-black text-base">Ingresar Lote a Corral</h3>
                   <button type="button" onClick={() => setModalNuevoLote(false)} className="font-black">✕</button>
                 </div>
+                <label className="block text-xs font-bold">
+                  ¿Tiene arete correlativo? (Solo si nació en la granja)
+                  <select name="tiene_arete" className="w-full mt-1 p-3 rounded-xl border font-bold text-sm">
+                    <option value="no">No · S/I (sin identificación)</option>
+                    <option value="si">Sí · Asignar arete desde #{data.siguiente_cerdo_id || 1}</option>
+                  </select>
+                </label>
                 <label className="block text-xs font-bold">
                   Cantidad de cerdos
                   <input name="cantidad" type="number" min="1" max="50" defaultValue="4" required className="w-full mt-1 p-3 rounded-xl border font-bold text-sm" />
@@ -1445,7 +1478,7 @@
                   <h3 className="font-black text-base">Registrar Enfermedad / Periodo de Retiro</h3>
                   <button type="button" onClick={() => setModalEnfermedad(false)} className="font-black">✕</button>
                 </div>
-                <input name="arete" required placeholder="Número de Arete (ej. 1)" className="w-full p-3 rounded-xl border font-bold text-sm" />
+                <input name="arete" required placeholder="Arete o S/I (ej. Macho · S/I o #1)" className="w-full p-3 rounded-xl border font-bold text-sm" />
                 <input name="signos" required placeholder="Signos clínicos (ej. Fiebre, decaimiento)" className="w-full p-3 rounded-xl border font-bold text-sm" />
                 <input name="tratamiento" required placeholder="Tratamiento aplicado" className="w-full p-3 rounded-xl border font-bold text-sm" />
                 <input name="retiro" type="number" min="0" defaultValue="7" required placeholder="Días de retiro antes de sacrificio" className="w-full p-3 rounded-xl border font-bold text-sm" />
