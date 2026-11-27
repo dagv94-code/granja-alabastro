@@ -948,4 +948,582 @@
               </div>
             )}
 
-            {/* ==================== 2. TABLERO DE CORRALES CON
+            {/* ==================== 2. TABLERO DE CORRALES CON SEMÁFOROS ==================== */}
+            {tab === "corrales" && (
+              <div className="space-y-6">
+                {["Gestación", "Maternidad", "Pre-ceba", "Engorde", "Verraco / Celador"].map((area) => {
+                  const unidades = (data.jaulas || []).filter((j) => j.area === area);
+                  return (
+                    <section key={area} className="space-y-2.5">
+                      <h2 className="font-black text-base uppercase tracking-wide flex items-center justify-between">
+                        <span>{area}</span>
+                        <span className="text-xs font-bold text-zinc-500">{unidades.length} unidades</span>
+                      </h2>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {unidades.map((u) => {
+                          const madreOcupante = (data.madres || []).find((m) => m.jaula === u.id && m.estado !== "descartada");
+                          const cerdosCorral = (data.cerdos || []).filter((c) => c.corral === u.id && (c.estado === "pre-ceba" || c.estado === "engorde" || c.estado === "reemplazo_reproductora"));
+                          const tareasUnidad = tareasCalculadas.filter((t) => t.ubicacion === u.id);
+                          const hayRetiro = cerdosCorral.some((c) => c.en_retiro_hasta && hoyISO() <= c.en_retiro_hasta);
+                          const haySacrificioSemana = cerdosCorral.some((c) => c.prioridad_sacrificio_semana);
+
+                          let sem = "gris";
+                          let semTexto = "Libre";
+                          if (u.area === "Verraco / Celador") {
+                            sem = "verde";
+                            semTexto = `Activo (${data.verraco?.servicios_realizados || 0} serv.)`;
+                          } else if (haySacrificioSemana || hayRetiro || tareasUnidad.some((x) => x.semaforo === "rojo")) {
+                            sem = "rojo";
+                            semTexto = haySacrificioSemana ? "Sacrificio esta semana" : hayRetiro ? "En Retiro Sanitario" : "Tarea Vencida";
+                          } else if (tareasUnidad.some((x) => x.semaforo === "amarillo")) {
+                            sem = "amarillo";
+                            semTexto = "Aviso HOY / Mañana";
+                          } else if (madreOcupante || cerdosCorral.length > 0) {
+                            sem = "verde";
+                            semTexto = madreOcupante?.estado === "desarrollo" ? "En desarrollo (sin celo)" : "Al día";
+                          }
+
+                          const borde =
+                            sem === "rojo" ? "border-red-600 bg-red-50/70" :
+                            sem === "amarillo" ? "border-amber-400 bg-amber-50/70" :
+                            sem === "verde" ? "border-emerald-600 bg-emerald-50/50" :
+                            "border-zinc-300 bg-white";
+
+                          const conArete = cerdosCorral.filter((c) => c.arete).map((c) => Number(c.arete)).sort((a, b) => a - b);
+                          const descCerdos = cerdosCorral.length > 0
+                            ? (conArete.length > 0
+                                ? (conArete.length === 1 ? `Arete #${conArete[0]}` : `Aretes ${conArete[0]}–${conArete[conArete.length - 1]}`)
+                                : "S/I")
+                            : "";
+
+                          return (
+                            <div
+                              key={u.id}
+                              onClick={() => setModalCorral(u)}
+                              className={`p-3.5 rounded-2xl border-2 cursor-pointer transition active:scale-95 ${borde}`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-xl font-black">{u.id}</span>
+                                <span className="text-sm">
+                                  {sem === "rojo" ? "🔴" : sem === "amarillo" ? "🟡" : sem === "verde" ? "🟢" : "⚪"}
+                                </span>
+                              </div>
+                              <div className="mt-2 text-xs font-extrabold text-zinc-900">
+                                {u.area === "Verraco / Celador" && `${data.verraco?.id} · ${data.verraco?.raza}`}
+                                {madreOcupante && `${madreOcupante.nombre_corto || madreOcupante.id} (${madreOcupante.estado === "gestante" ? "Gestante" : "Desarrollo"})`}
+                                {cerdosCorral.length > 0 && `${cerdosCorral.length} cerdos · ${descCerdos}`}
+                                {!madreOcupante && cerdosCorral.length === 0 && u.area !== "Verraco / Celador" && "Disponible"}
+                              </div>
+                              <div className="mt-1 text-[11px] font-bold text-zinc-600">{semTexto}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ==================== 3. MADRES REPRODUCTORAS (MADRE 1 A MADRE 8) ==================== */}
+            {tab === "madres" && (
+              <div className="space-y-3">
+                <div className={`${cardBase} p-3 rounded-2xl flex items-center justify-between bg-zinc-950 text-white`}>
+                  <div>
+                    <div className="text-xs text-zinc-400 font-bold">Verraco / Cerdo Celador · Corral V-1</div>
+                    <div className="font-black text-sm">{data.verraco?.id} ({data.verraco?.raza}) · {data.verraco?.servicios_realizados || 0} monta registrada</div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500 text-zinc-950 text-xs font-black">ACTIVO</span>
+                </div>
+
+                {(data.madres || []).map((m) => {
+                  const diasGest = m.estado === "gestante" && m.fecha_servicio ? diffDias(m.fecha_servicio, hoyISO()) : null;
+                  const etiquetaMadre = m.nombre_corto || m.id;
+                  return (
+                    <div key={m.id} className={`${cardBase} p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3`}>
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-lg font-black">{etiquetaMadre}</span>
+                          <span className="px-2 py-0.5 rounded bg-zinc-200 text-xs font-bold">Arete {m.arete}</span>
+                          <span className="px-2 py-0.5 rounded bg-zinc-900 text-white text-xs font-bold">{m.jaula || "Sin jaula"}</span>
+                          <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 text-xs font-extrabold uppercase">{m.estado.replace(/_/g, " ")}</span>
+                        </div>
+                        <p className="text-xs text-zinc-600 font-semibold">
+                          {diasGest !== null && `Montada: ${fmtFecha(m.fecha_servicio)} (Día ${diasGest} de gestación) · Desparasitación día 100: ${fmtFecha(sumarDias(m.fecha_servicio, data.config.desp_gestacion))} (${m.desp_100_hecha ? "Hecha" : "Pendiente"}) · Pase maternidad día 107: ${fmtFecha(sumarDias(m.fecha_servicio, data.config.pase_maternidad))} · Parto probable día 114: ${fmtFecha(sumarDias(m.fecha_servicio, data.config.parto_probable))}`}
+                          {m.estado === "desarrollo" && `${etiquetaMadre} en desarrollo · Aún no ha tenido su primer celo.`}
+                        </p>
+                        {m.notas_origen && <p className="text-[11px] text-zinc-500">{m.notas_origen}</p>}
+                      </div>
+                      {m.estado !== "descartada" && (
+                        <button
+                          onClick={() => abrirModalMadre(m)}
+                          className="btn-touch px-4 py-2.5 rounded-xl bg-zinc-950 text-white text-xs font-black shrink-0"
+                        >
+                          Gestionar Ciclo
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ==================== 4. CERDOS DE CEBA / REEMPLAZO ==================== */}
+            {tab === "cerdos" && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    placeholder="Buscar por arete (en nacidos en granja), S/I o corral (ej. E-1, E-2)..."
+                    value={busquedaArete}
+                    onChange={(e) => setBusquedaArete(e.target.value)}
+                    className="flex-1 p-3.5 rounded-xl border-2 border-zinc-300 bg-white font-bold text-sm"
+                  />
+                  <button
+                    onClick={() => setModalNuevoLote(true)}
+                    className="btn-touch px-4 py-3 rounded-xl bg-zinc-950 text-white font-black text-xs shrink-0"
+                  >
+                    + Ingresar Lote a Corral
+                  </button>
+                </div>
+
+                {["PC-1", "PC-2", "E-1", "E-2", "E-3", "E-4"].map((cid) => {
+                  const grupo = (data.cerdos || []).filter(
+                    (c) => c.corral === cid && (c.estado === "pre-ceba" || c.estado === "engorde" || c.estado === "reemplazo_reproductora") &&
+                    (!busquedaArete ||
+                      (c.arete && c.arete.includes(busquedaArete.trim())) ||
+                      (c.etiqueta_visual && c.etiqueta_visual.toLowerCase().includes(busquedaArete.trim().toLowerCase())) ||
+                      cid.toLowerCase().includes(busquedaArete.trim().toLowerCase()))
+                  );
+                  if (grupo.length === 0) return null;
+                  const edadDias = diffDias(grupo[0].fecha_nacimiento, hoyISO());
+
+                  return (
+                    <div key={cid} className={`${cardBase} p-4 rounded-2xl space-y-3`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-black">Corral {cid}</span>
+                            <span className="px-2.5 py-0.5 rounded-lg bg-zinc-900 text-white text-xs font-bold">{grupo.length} cerdos</span>
+                            <span className="px-2.5 py-0.5 rounded-lg bg-zinc-200 text-zinc-900 text-xs font-black">
+                              Nacidos {fmtFecha(grupo[0].fecha_nacimiento)} ({edadDias}d)
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => actualizarPesoCorral(cid)} className="px-3 py-2 rounded-xl bg-zinc-200 hover:bg-zinc-300 text-xs font-black">
+                            ⚖️ Pesar Lote
+                          </button>
+                          <button onClick={() => moverLoteCorral(cid)} className="px-3 py-2 rounded-xl bg-zinc-950 text-white text-xs font-black">
+                            ⇄ Mover Corral
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {grupo.map((c) => {
+                          const enRetiro = c.en_retiro_hasta && hoyISO() <= c.en_retiro_hasta;
+                          const esSacrificio = c.prioridad_sacrificio_semana;
+                          return (
+                            <div
+                              key={c.id}
+                              className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${
+                                esSacrificio ? "border-red-500 bg-red-50" :
+                                enRetiro ? "border-red-500 bg-red-50" :
+                                "border-zinc-200 bg-zinc-50"
+                              }`}
+                            >
+                              <div>
+                                <div className="font-black text-sm">
+                                  {etiquetaAnimal(c)} <span className="text-xs font-semibold text-zinc-600">({c.sexo === "M" ? "Macho" : "Hembra"} · {c.estado === "reemplazo_reproductora" ? "Reemplazo Madre" : "Ceba"})</span>
+                                </div>
+                                <div className="text-xs text-zinc-600 font-bold">
+                                  Peso: {c.peso_kg} kg {esSacrificio && <span className="text-red-700">· 🔴 SACRIFICIO ESTA SEMANA</span>}
+                                </div>
+                              </div>
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => retirarOSacrificarCerdo(c, "baja")}
+                                  className="px-2.5 py-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-900 text-xs font-black"
+                                >
+                                  Retiro/Baja
+                                </button>
+                                <button
+                                  onClick={() => retirarOSacrificarCerdo(c, "sacrificio")}
+                                  className="px-2.5 py-2 rounded-lg bg-zinc-950 text-white text-xs font-black"
+                                >
+                                  Sacrificio
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ==================== 5. PLAN SANITARIO & CASOS ==================== */}
+            {tab === "sanidad" && (
+              <div className="space-y-5">
+                <div className="flex justify-between items-center">
+                  <h2 className="font-black text-lg">Plan Sanitario Oficial · Agropecuaria Alabastro</h2>
+                  <button
+                    onClick={() => setModalEnfermedad(true)}
+                    className="btn-touch px-4 py-2.5 rounded-xl bg-red-600 text-white text-xs font-black"
+                  >
+                    + Reportar Enfermedad / Retiro
+                  </button>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className={`${cardBase} p-4 rounded-2xl space-y-2.5`}>
+                    <h3 className="font-black text-base bg-zinc-950 text-white px-3 py-2 rounded-xl">
+                      1. Plan Sanitario · Madres Reproductoras
+                    </h3>
+                    <ul className="space-y-2 text-sm">
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 100 de gestación:</strong> Desparasitación + lavado antes de entrar a maternidad.</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 107 de gestación:</strong> Traslado a la jaula de maternidad libre (M-1 o M-2).</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 114 (Parto) + 12 horas:</strong> Meloxicam 2% (un lado del cuello) + Modificador orgánico (otro lado del cuello).</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 28–30 posparto (Destete):</strong> Desparasitación + Vitamina B12 / Complejo B + Modificador orgánico y traslado a jaula de gestación para <strong>dejar pasar el 1er celo libre</strong>.</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>~Día 21–26 post-destete (2do celo):</strong> Monta / Inseminación con la madre totalmente recuperada.</li>
+                    </ul>
+                  </div>
+
+                  <div className={`${cardBase} p-4 rounded-2xl space-y-2.5`}>
+                    <h3 className="font-black text-base bg-zinc-950 text-white px-3 py-2 rounded-xl">
+                      2. Plan Sanitario · Lechones y Cerdos de Ceba
+                    </h3>
+                    <ul className="space-y-2 text-sm">
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 2 de nacido:</strong> Descolmillado.</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 3 de nacido:</strong> Corte de cola + 1ra dosis de Hierro + colocación de aretes (#1 en adelante en nacidos en granja).</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 7 de nacido:</strong> Castración de machos.</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 12 de nacido:</strong> 2da dosis de Hierro.</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día del Destete:</strong> Vitamina B para abrir el apetito.</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>+5 días después del destete:</strong> 1ra Desparasitación oral + Modificador orgánico (día siguiente preparar vacuna).</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 60–63 de vida:</strong> 2da Desparasitación (30d después de la 1ra) + Modificador orgánico.</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 80 de vida:</strong> Vitamina B antes de la dosis final de modificador.</li>
+                      <li className="p-2 rounded-lg bg-zinc-50 border"><strong>Día 105 de vida:</strong> 3ra Desparasitación + Modificador orgánico.</li>
+                      <li className="p-2 rounded-lg bg-amber-100 border border-amber-400"><strong>5 Meses (150 días):</strong> Semáforo amarillo de salida a sacrificio (sin retiro activo).</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className={`${cardBase} p-4 rounded-2xl space-y-2`}>
+                  <h3 className="font-black text-sm uppercase">Registro de Sacrificios, Retiros y Bajas</h3>
+                  {(data.bajas_sacrificios || []).length === 0 ? (
+                    <p className="text-xs text-zinc-500">Sin movimientos registrados aún.</p>
+                  ) : (
+                    data.bajas_sacrificios.map((b, i) => (
+                      <div key={i} className="p-3 rounded-xl border bg-zinc-50 text-xs flex justify-between gap-2">
+                        <div>
+                          <strong>{b.tipo}</strong> · {b.etiqueta_visual || (b.arete ? `Arete #${b.arete}` : "S/I")} ({fmtFecha(b.fecha)}) — {b.motivo || `Vivo: ${b.peso_vivo} kg / Canal: ${b.peso_canal} kg (${b.rendimiento})`}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ==================== 6. CONFIGURACIÓN PROTEGIDA (alabastro2026) ==================== */}
+            {tab === "config" && (
+              <div className="space-y-4">
+                {!configDesbloqueada ? (
+                  <div className={`${cardBase} p-6 rounded-2xl max-w-md mx-auto text-center space-y-3`}>
+                    <h2 className="font-black text-lg">Acceso Restringido · Configuración</h2>
+                    <p className="text-xs text-zinc-500">Ingresa la clave maestra para editar parámetros o restaurar datos.</p>
+                    <input
+                      type="password"
+                      placeholder="Clave de configuración"
+                      value={claveInput}
+                      onChange={(e) => setClaveInput(e.target.value)}
+                      className="w-full p-3.5 rounded-xl border-2 border-zinc-300 text-center font-black"
+                    />
+                    {errorClave && <p className="text-xs font-bold text-red-600">{errorClave}</p>}
+                    <button
+                      onClick={() => {
+                        if (claveInput.trim() === "alabastro2026") {
+                          setConfigDesbloqueada(true);
+                          setErrorClave("");
+                        } else {
+                          setErrorClave("Clave incorrecta.");
+                        }
+                      }}
+                      className="btn-touch w-full rounded-xl bg-zinc-950 text-white font-black text-sm"
+                    >
+                      Desbloquear Configuración
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className={`${cardBase} p-4 rounded-2xl space-y-3`}>
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-black text-base">Parámetros Operativos Editables</h3>
+                        <button onClick={() => setConfigDesbloqueada(false)} className="text-xs font-bold underline">Bloquear</button>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                        {[
+                          ["ciclo_celo", "Ciclo Celo (días)"],
+                          ["desp_gestacion", "Desp. Gestación (día)"],
+                          ["pase_maternidad", "Pase Maternidad (día)"],
+                          ["parto_probable", "Parto Probable (día)"],
+                          ["destete_corto", "Destete Corto (días)"],
+                          ["destete_largo", "Destete Largo (días)"],
+                          ["desp1_post_destete", "1ra Desp. Post-Destete"],
+                          ["desp2_vida", "2da Desp. (día vida)"],
+                          ["vitb_ceba_dia", "Vitamina B Ceba (día)"],
+                          ["desp3_vida", "3ra Desp. (día vida)"],
+                          ["dias_sacrificio_ceba", "Meta Sacrificio (días)"],
+                          ["peso_objetivo_kg", "Peso Objetivo (kg)"]
+                        ].map(([key, label]) => (
+                          <label key={key} className="block space-y-1 font-bold">
+                            <span>{label}</span>
+                            <input
+                              type="number"
+                              value={data.config[key]}
+                              onChange={(e) => {
+                                const nuevo = JSON.parse(JSON.stringify(data));
+                                nuevo.config[key] = Number(e.target.value);
+                                guardarEstado(nuevo, `Parámetro ${label} actualizado a ${e.target.value}`);
+                              }}
+                              className="w-full p-2.5 rounded-lg border border-zinc-300 font-black"
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className={`${cardBase} p-4 rounded-2xl space-y-3 border-2 border-zinc-300`}>
+                      <div>
+                        <h4 className="font-black text-base">Restaurar Arranque Real de Granja Alabastro</h4>
+                        <p className="text-xs text-zinc-600 mt-0.5">
+                          4 cerdos para sacrificio esta semana marcados como S/I, Madres 2 a 8 en desarrollo y Madre 1 gestante (03-09-2026).
+                        </p>
+                      </div>
+
+                      {!confirmarLimpieza ? (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmarLimpieza(true)}
+                          className="btn-touch px-4 py-3 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-black"
+                        >
+                          ↺ Restaurar Arranque Real
+                        </button>
+                      ) : (
+                        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-400 space-y-2.5">
+                          <p className="text-xs font-black text-zinc-950">
+                            ¿Confirmas restaurar el arranque real de la granja?
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const real = generarArranqueReal(data.config || CONFIG_DEFAULT);
+                                guardarEstado(real, "Arranque real de Granja Alabastro restaurado.");
+                                setConfirmarLimpieza(false);
+                                setTab("hoy");
+                                mostrarAviso("✓ Arranque real cargado.");
+                              }}
+                              className="btn-touch px-4 py-2.5 rounded-xl bg-zinc-950 text-white text-xs font-black"
+                            >
+                              SÍ, RESTAURAR ARRANQUE REAL
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmarLimpieza(false)}
+                              className="btn-touch px-4 py-2.5 rounded-xl bg-white border border-zinc-300 text-xs font-black"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={`${cardBase} p-4 rounded-2xl space-y-2`}>
+                      <h4 className="font-black text-sm">Bitácora de Auditoría Reciente</h4>
+                      <div className="max-h-48 overflow-y-auto space-y-1 text-xs">
+                        {(data.auditoria || []).map((a, idx) => (
+                          <div key={idx} className="p-2 rounded bg-zinc-50 border flex justify-between gap-2">
+                            <span>{a.detalle}</span>
+                            <span className="text-zinc-400 shrink-0">{a.fecha}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </main>
+
+          {/* MODAL GESTIÓN DE MADRE CON FECHA MANUAL */}
+          {modalMadre && (
+            <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4">
+              <div className="bg-white w-full max-w-md rounded-2xl p-5 space-y-3">
+                <div className="flex justify-between items-center border-b pb-2">
+                  <h3 className="font-black text-lg">{modalMadre.nombre_corto || modalMadre.id} · Arete {modalMadre.arete}</h3>
+                  <button onClick={() => setModalMadre(null)} className="text-sm font-black px-2 py-1">✕</button>
+                </div>
+
+                <label className="block bg-zinc-50 border-2 border-zinc-900 rounded-xl p-3">
+                  <span className="block text-xs font-black uppercase text-zinc-800">
+                    Fecha del suceso (Monta, Celo, IA o Tratamiento)
+                  </span>
+                  <input
+                    type="date"
+                    value={fechaEventoMadre}
+                    onChange={(e) => setFechaEventoMadre(e.target.value)}
+                    className="w-full mt-1.5 p-2.5 rounded-lg border border-zinc-400 bg-white font-black text-sm"
+                  />
+                  {fechaEventoMadre && (
+                    <span className="block mt-1.5 text-[11px] font-bold text-zinc-600">
+                      Si es monta/IA: Desp. día 100 → {fmtFecha(sumarDias(fechaEventoMadre, data.config.desp_gestacion))} · Maternidad día 107 → {fmtFecha(sumarDias(fechaEventoMadre, data.config.pase_maternidad))} · Parto día 114 → {fmtFecha(sumarDias(fechaEventoMadre, data.config.parto_probable))}
+                    </span>
+                  )}
+                </label>
+
+                <div className="grid grid-cols-1 gap-2">
+                  <button onClick={() => registrarEventoMadre(modalMadre.id, "celo_pasado")} className="btn-touch p-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 font-black text-xs text-left">
+                    1. Registrar Celo en fecha elegida (+21 días)
+                  </button>
+                  <button onClick={() => registrarEventoMadre(modalMadre.id, "monta")} className="btn-touch p-3 rounded-xl bg-zinc-950 text-white font-black text-xs text-left">
+                    2. Confirmar Monta Natural en fecha elegida (Activa Gestación + V-001)
+                  </button>
+                  <button onClick={() => registrarEventoMadre(modalMadre.id, "ia")} className="btn-touch p-3 rounded-xl bg-zinc-950 text-white font-black text-xs text-left">
+                    3. Confirmar Inseminación Artificial en fecha elegida (Activa Gestación)
+                  </button>
+                  <button onClick={() => registrarEventoMadre(modalMadre.id, "repite_celo")} className="btn-touch p-3 rounded-xl bg-amber-100 text-amber-950 font-black text-xs text-left">
+                    4. Volvió a Celo en fecha elegida (Reiniciar Ciclo)
+                  </button>
+                  <button onClick={() => registrarEventoMadre(modalMadre.id, "meloxicam_parto")} className="btn-touch p-3 rounded-xl bg-emerald-100 text-emerald-950 font-black text-xs text-left">
+                    5. Registrar Meloxicam 2% + Modificador (Posparto)
+                  </button>
+                  <button onClick={() => registrarEventoMadre(modalMadre.id, "descartar")} className="btn-touch p-3 rounded-xl bg-red-100 text-red-900 font-black text-xs text-left">
+                    6. Descartar Madre y Liberar Jaula
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL INGRESAR LOTE MANUAL */}
+          {modalNuevoLote && (
+            <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+              <form onSubmit={crearLoteManual} className="bg-white w-full max-w-md rounded-2xl p-5 space-y-3">
+                <div className="flex justify-between items-center border-b pb-2">
+                  <h3 className="font-black text-base">Ingresar Lote a Corral</h3>
+                  <button type="button" onClick={() => setModalNuevoLote(false)} className="font-black">✕</button>
+                </div>
+                <label className="block text-xs font-bold">
+                  ¿Tiene arete correlativo? (Solo si nació en la granja)
+                  <select name="tiene_arete" className="w-full mt-1 p-3 rounded-xl border font-bold text-sm">
+                    <option value="no">No · S/I (sin identificación)</option>
+                    <option value="si">Sí · Asignar arete desde #{data.siguiente_cerdo_id || 1}</option>
+                  </select>
+                </label>
+                <label className="block text-xs font-bold">
+                  Cantidad de cerdos
+                  <input name="cantidad" type="number" min="1" max="50" defaultValue="4" required className="w-full mt-1 p-3 rounded-xl border font-bold text-sm" />
+                </label>
+                <label className="block text-xs font-bold">
+                  Sexo
+                  <select name="sexo" className="w-full mt-1 p-3 rounded-xl border font-bold text-sm">
+                    <option value="MIXTO">Mixto (Machos y Hembras)</option>
+                    <option value="M">Machos</option>
+                    <option value="H">Hembras</option>
+                  </select>
+                </label>
+                <label className="block text-xs font-bold">
+                  Clasificación / Destino
+                  <select name="destino" className="w-full mt-1 p-3 rounded-xl border font-bold text-sm">
+                    <option value="engorde">Ceba / Engorde</option>
+                    <option value="pre-ceba">Pre-ceba</option>
+                    <option value="reemplazo_reproductora">Reemplazo Reproductora</option>
+                  </select>
+                </label>
+                <label className="block text-xs font-bold">
+                  Corral destino
+                  <select name="corral" className="w-full mt-1 p-3 rounded-xl border font-bold text-sm">
+                    <option value="E-1">Engorde 1 (E-1)</option>
+                    <option value="E-2">Engorde 2 (E-2)</option>
+                    <option value="E-3">Engorde 3 (E-3)</option>
+                    <option value="E-4">Engorde 4 (E-4)</option>
+                    <option value="PC-1">Pre-ceba 1 (PC-1)</option>
+                    <option value="PC-2">Pre-ceba 2 (PC-2)</option>
+                  </select>
+                </label>
+                <label className="block text-xs font-bold">
+                  Fecha de nacimiento del lote
+                  <input name="fecha_nac" type="date" defaultValue={hoyISO()} required className="w-full mt-1 p-3 rounded-xl border font-bold text-sm" />
+                </label>
+                <label className="block text-xs font-bold">
+                  Peso promedio actual (kg)
+                  <input name="peso" type="number" step="0.1" defaultValue="105" required className="w-full mt-1 p-3 rounded-xl border font-bold text-sm" />
+                </label>
+                <button type="submit" className="btn-touch w-full rounded-xl bg-zinc-950 text-white font-black text-sm">
+                  Guardar Lote y Sincronizar
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* MODAL DETALLE DE CORRAL / JAULA */}
+          {modalCorral && (
+            <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4">
+              <div className="bg-white w-full max-w-md rounded-2xl p-5 space-y-3">
+                <div className="flex justify-between items-center border-b pb-2">
+                  <h3 className="font-black text-lg">{modalCorral.area} · {modalCorral.id}</h3>
+                  <button onClick={() => setModalCorral(null)} className="text-sm font-black px-2 py-1">✕</button>
+                </div>
+                <p className="text-xs text-zinc-600 font-bold">Capacidad máxima: {modalCorral.capacidad} · Estado: {modalCorral.estado}</p>
+                <div className="space-y-2">
+                  {tareasCalculadas.filter((t) => t.ubicacion === modalCorral.id).map((t) => (
+                    <div key={t.id} className="p-3 rounded-xl bg-zinc-100 text-xs flex justify-between items-center gap-2">
+                      <div>
+                        <div className="font-black">{t.titulo}</div>
+                        <div className="text-zinc-500">{fmtFecha(t.fecha)}</div>
+                      </div>
+                      <button onClick={() => { completarTarea(t); setModalCorral(null); }} className="px-3 py-2 rounded-lg bg-zinc-950 text-white font-black">
+                        {t.tipo === "sacrificio_semana" ? "Ver" : "Hecho"}
+                      </button>
+                    </div>
+                  ))}
+                  {tareasCalculadas.filter((t) => t.ubicacion === modalCorral.id).length === 0 && (
+                    <p className="text-xs text-zinc-500">Sin alertas pendientes en esta unidad.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL REPORTAR ENFERMEDAD / RETIRO */}
+          {modalEnfermedad && (
+            <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+              <form onSubmit={registrarEnfermedad} className="bg-white w-full max-w-md rounded-2xl p-5 space-y-3">
+                <div className="flex justify-between items-center border-b pb-2">
+                  <h3 className="font-black text-base">Registrar Enfermedad / Periodo de Retiro</h3>
+                  <button type="button" onClick={() => setModalEnfermedad(false)} className="font-black">✕</button>
+                </div>
+                <input name="arete" required placeholder="Arete o S/I (ej. Macho · S/I o #1)" className="w-full p-3 rounded-xl border font-bold text-sm" />
+                <input name="signos" required placeholder="Signos clínicos (ej. Fiebre, decaimiento)" className="w-full p-3 rounded-xl border font-bold text-sm" />
+                <input name="tratamiento" required placeholder="Tratamiento aplicado" className="w-full p-3 rounded-xl border font-bold text-sm" />
+                <input name="retiro" type="number" min="0" defaultValue="7" required placeholder="Días de retiro antes de sacrificio" className="w-full p-3 rounded-xl border font-bold text-sm" />
+                <button type="submit" className="btn-touch w-full rounded-xl bg-red-600 text-white font-black text-sm">
+                  Guardar y Activar Bloqueo de Retiro
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
